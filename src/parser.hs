@@ -1,13 +1,15 @@
-module Parser
-( parse
-, equationP
-) where
+module Parser where
+-- ( parse
+-- , equationP
+-- ) where
 
 import Control.Applicative
 import Control.Monad
 import Data.Char
 
-import Equation
+import Expr
+-- import Equation
+-- import Complex
 
 
 newtype Parser a = Parser (String -> Maybe (a, String))
@@ -39,61 +41,91 @@ instance Alternative Parser where
     (Parser p1) <|> (Parser p2) = Parser new_p
         where new_p s = p1 s <|> p2 s
 
+instance Monad Parser where
+    -- return :: a -> Parser a
+    return x = pure x
+    -- (>>=) :: Parser a -> (a -> Parser b) -> Parser b
+    (Parser p1) >>= f = Parser new_p
+        where new_p s = do
+                (x, s') <- p1 s
+                parse (f x) s'
 
-satisfy :: (Char -> Bool) -> Parser Char
-satisfy f = Parser p
+
+satisfyChar :: (Char -> Bool) -> Parser Char
+satisfyChar f = Parser p
     where p []     = Nothing
           p (c:cs) = if f c then Just (c, cs)
                             else Nothing
 
-charP :: Char -> Parser Char
-charP c = satisfy (c ==)
-
-digitsP :: Parser String
-digitsP = some (satisfy isDigit) -- at least one digit to avoid read exception
-
-spacesP :: Parser String
-spacesP = many (satisfy isSpace)
-
 sepBy :: Parser b -> Parser a -> Parser [a]
 sepBy sep x = many (sep *> x)
 
-naturalP :: Parser Int
-naturalP = read <$> digitsP
+sepByMap :: (b -> a -> a) -> Parser b -> Parser a -> Parser [a]
+sepByMap f sep x = many (f <$> sep <*> x)
 
-floatPositiveP :: Parser Float
-floatPositiveP = (f <$> digitsP <*> charP '.' <*> digitsP) <|> (read <$> digitsP)
-    where f pos dot dec = read $ pos ++ [dot] ++ dec
+signed :: Num a => Parser a -> Parser a
+signed p = do charP '-'
+              x <- p
+              return (-x)
+           <|> p
 
--- Equation parsers
+readParser :: Read a => Parser String -> Parser a
+readParser p = read <$> p
 
-unsignedTermP :: Parser Term
-unsignedTermP = fullP <|> varExpP <|> varConstP <|> constP
-    where
-        -- 1 * X ^ 1
-        fullP     = (\c e -> Term c e) <$> floatPositiveP <* mulP <* varP <* expP <*> naturalP
-        -- X ^ 1
-        varExpP   = (\e -> Term 1 e)   <$> (varP *> expP *> naturalP)
-        -- 1 * X
-        varConstP = (\c -> Term c 1)   <$> floatPositiveP <* mulP <* varP
-        -- 1
-        constP    = (\c -> Term c 0)   <$> floatPositiveP
+charP :: Char -> Parser Char
+charP c = satisfyChar (c ==)
 
-        mulP = spacesP *> charP '*' *> spacesP
-        varP = spacesP *> charP 'X' *> spacesP
-        expP = spacesP *> charP '^' *> spacesP
+alphaP :: Parser Char
+alphaP = satisfyChar isAlpha
 
-signedTermP :: Parser Term
-signedTermP = signF <$> signP <* spacesP <*> unsignedTermP
-    where signP = charP '-' <|> charP '+'
-          signF '-' (Term c e) = Term (-c) e
-          signF _   t          = t
+digitsP :: Parser String
+digitsP = some (satisfyChar isDigit) -- at least one digit to avoid read exception
 
-polynomialP :: Parser Polynomial
-polynomialP = (:) <$> firstTermP <* spacesP <*> (sepBy spacesP signedTermP)
-    where firstTermP = signedTermP <|> unsignedTermP
+spacesP :: Parser String
+spacesP = many (satisfyChar isSpace)
 
-equationP :: Parser Equation
-equationP = (\l r -> Equation l r)
-             <$> polynomialP
-             <*> (spacesP *> charP '=' *> spacesP *> polynomialP)
+unsignedIntP :: Parser Int
+unsignedIntP = readParser digitsP
+
+intP :: Parser Int
+intP = signed unsignedIntP
+
+unsignedFloatP :: Parser Float
+unsignedFloatP = readParser p
+    where p = do pos <- digitsP
+                 charP '.'
+                 dec <- digitsP
+                 return (pos ++ "." ++ dec)
+              <|> digitsP
+
+floatP :: Parser Float
+floatP = signed unsignedFloatP
+
+-- imaginaryP :: Parser Imaginary
+-- imaginaryP = floatP <* charP 'i'
+
+exprP :: Parser Expr
+exprP = do x <- termP
+           charP '+'
+           y <- exprP
+           return (Expr x y)
+        <|> (ExprSingle <$> termP)
+
+termP :: Parser Term
+termP = do f <- factorP
+           charP '*'
+           t <- termP
+           return (Term f t)
+        <|> (TermSingle <$> factorP)
+
+
+factorP :: Parser Factor
+factorP = do b <- baseP
+             charP '^'
+             e <- factorP
+             return (Factor b e)
+          <|> (FactorSingle <$> baseP)
+
+baseP :: Parser Base
+baseP = (charP '(' *> (Base <$> exprP) <* charP ')')
+        <|> (BaseSingle <$> floatP)
