@@ -1,15 +1,12 @@
 module Parser where
--- ( parse
--- , equationP
--- ) where
 
 import Control.Applicative
 import Control.Monad
 import Data.Char
 
 import Expr
--- import Equation
--- import Complex
+import Imag
+import Matrix
 
 
 newtype Parser a = Parser (String -> Maybe (a, String))
@@ -58,11 +55,10 @@ satisfyChar f = Parser p
                             else Nothing
 
 sepBy :: Parser b -> Parser a -> Parser [a]
-sepBy sep x = many (sep *> x)
+sepBy sep x = (:) <$> x <*> (many (sep *> x))
 
 sepByMap :: (b -> a -> a) -> Parser b -> Parser a -> Parser [a]
-sepByMap f sep x = many (f <$> sep <*> x)
-
+sepByMap f sep x = (:) <$> x <*> (many (f <$> sep <*> x))
 signed :: Num a => Parser a -> Parser a
 signed p = do charP '-'
               x <- p
@@ -101,15 +97,21 @@ unsignedFloatP = readParser p
 floatP :: Parser Float
 floatP = signed unsignedFloatP
 
--- imaginaryP :: Parser Imaginary
--- imaginaryP = floatP <* charP 'i'
+imagP :: Parser Imag
+imagP = Imag <$> (floatP <* charP 'i')
 
-exprP :: Parser Expr
-exprP = do x <- termP
-           charP '+'
-           y <- exprP
-           return (Expr x y)
-        <|> (ExprSingle <$> termP)
+matrixP :: Parser (Matrix AExpr)
+matrixP = Matrix <$> (charP '[' *> (sepBy (charP ';') matrixRowP) <* charP ']')
+
+matrixRowP :: Parser (MatrixRow AExpr)
+matrixRowP = charP '[' *> (sepBy (charP ',') aExprP) <* charP ']'
+
+aExprP :: Parser AExpr
+aExprP = do x <- termP
+            charP '+'
+            y <- aExprP
+            return (AExpr x y)
+         <|> (AExprSingle <$> termP)
 
 termP :: Parser Term
 termP = do f <- factorP
@@ -127,5 +129,8 @@ factorP = do b <- baseP
           <|> (FactorSingle <$> baseP)
 
 baseP :: Parser Base
-baseP = (charP '(' *> (Base <$> exprP) <* charP ')')
-        <|> (BaseSingle <$> floatP)
+baseP = (charP '(' *> (Base <$> aExprP) <* charP ')')
+        <|> (BaseSingle <$> ExprI <$> imagP)
+        <|> (BaseSingle <$> ExprF <$> floatP)
+        <|> (BaseSingle <$> ExprM <$> matrixP)
+

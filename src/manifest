@@ -10,10 +10,11 @@ State Data struct:
     - variable
 
 
-1. ( )
-2. ^
-3. * / % **
+5. real imag matrix
 4. + -
+3. * / % **
+2. ^
+1. ( )
 
 expr         ::= <term>   (+ | -)           <expr>   | <term>
 term         ::= <factor> (* | / | % | **)? <term>   | <factor>  -- default to '*'

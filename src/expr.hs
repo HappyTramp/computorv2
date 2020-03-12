@@ -1,15 +1,24 @@
 module Expr where
 
+import Imag
+import Matrix
+
 -- data X = Expr | Imag | Matrix
 
-data Expr   = Expr Term Expr     | ExprSingle Term
+-- class ExprElement where
+--     subExpr :: ExprElement a => a -> a
+--     composed :: ExprElement a -> a -> (a, a)
+
+data AExpr  = AExpr Term AExpr   | AExprSingle Term
 data Term   = Term Factor Term   | TermSingle Factor
 data Factor = Factor Base Factor | FactorSingle Base
-data Base   = Base Expr          | BaseSingle Float
+data Base   = Base AExpr         | BaseSingle Expr
 
-instance Show Expr where
-    show (ExprSingle t) = show t
-    show (Expr t e) = show t ++ " + " ++ show e
+data Expr   = ExprF Float | ExprI Imag | ExprM (Matrix AExpr)
+
+instance Show AExpr where
+    show (AExprSingle t) = show t
+    show (AExpr t e) = show t ++ " + " ++ show e
 
 instance Show Term where
     show (TermSingle f) = show f
@@ -21,4 +30,12 @@ instance Show Factor where
 
 instance Show Base where
     show (BaseSingle x) = show x
-    show (Base e) = "( " ++ show e ++ " )"
+    show (Base e) = "(" ++ show e ++ ")"
+
+instance Show Expr where
+    show (ExprF f) = show f
+    show (ExprI i) = show i
+    show (ExprM m) = show m
+
+-- eval :: Expr -> Float
+-- eval
