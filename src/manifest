@@ -10,23 +10,87 @@ State Data struct:
     - variable
 
 
+
+Instruction/line:
+    if is '?' evaluate label else declare label.
+
+instruction  ::= <label> '=' (<expr> | '?')
+
+
+Declaration:
+    label is a declaration of function or variable name
+
+label        ::= <funcDecl> | <var>
+funcDecl     ::= <var> '(' <var> ')'
+var          ::= [a-zA-Z]+
+
+
+Expression:
+
 5. real imag matrix
 4. + -
 3. * / % **
 2. ^
-1. ( )
+1. ( )    -- not an operator
 
-expr         ::= <term>   (+ | -)           <expr>   | <term>
+expr         ::= <sum> | <imag> | <matrix> | <real> | <var> | <funcExpr>
+
+Arithmetic:
+
+sum          ::= <term>   (+ | -)           <sum>    | <term>
 term         ::= <factor> (* | / | % | **)? <term>   | <factor>  -- default to '*'
 factor       ::= <base>   '^'               <factor> | <base>
-base         ::= '(' <expr> ')'                      | ( <real> | <imag> | <matrix> )
+base         ::= '(' <expr> ')'                      | <expr>
 
-imag         ::= <expr> '*'? 'i'
-real         ::= [0-9]+
+Leaf:
 
-matrix       ::= '[' (<line> ';')* ']'
-line         ::= '[' (<expr> ',')* ']'
+real         ::= [0-9]+(\.[0-9]+)?
+imag         ::= <real> '*'? 'i'
+matrix       ::= '[' (<matrixRow> ';')* ']'
+matrixRow    ::= '[' (<expr> ',')* ']'
+fundExpr     ::= <var> '(' <expr> ')'
 
-func         ::= [a-zA-Z]+ '(' <var> ')'
-var          ::= [a-zA-Z]+
-endpoint     ::= (<var> | <func>) '=' <expr>
+REPL:
+
+1. read user input
+2. parse it into an ast
+3. reduce the ast to the minimum possible form
+4.
+
+every expression is a binary tree, except () which can be interpreted by changing the
+structure of the tree.
+
+operators and operand are both expression (tree nodes).
+
+operators always need 2 operand  (not leaf node)
+operand need 0                   (leaf node)
+
+evaluation of operand return the operand
+evaluation of operator, evaluate his childs, perform the operation on them, return the result
+
+fold?
+!monoid
+
+    +
+   / \
+  *   \
+ / \   \      3 * 4 + (5 - 3i)
+3   4   -
+       / \
+      5   3i
+
+Node +
+|_ Node *
+|  |_ Leaf 3
+|  |_ Leaf 4
+|
+|_ Node -
+   |_ Leaf 5
+   |_ Leaf 3i
+
+
+i^0 = 1
+i^1 = sqrt(-1) = i
+i^2 = -1
+i^3 = -sqrt(-1) = -i
+i^4 = 1

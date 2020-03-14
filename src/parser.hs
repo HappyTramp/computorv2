@@ -106,6 +106,16 @@ matrixP = Matrix <$> (charP '[' *> (sepBy (charP ';') matrixRowP) <* charP ']')
 matrixRowP :: Parser (MatrixRow AExpr)
 matrixRowP = charP '[' *> (sepBy (charP ',') aExprP) <* charP ']'
 
+varP :: Parser Var
+varP = some alphaP
+
+funcExprP :: Parser FuncExpr
+funcExprP = do name <- varP
+               charP '('
+               arg <- aExprP
+               charP ')'
+               return (FuncExpr name arg)
+
 aExprP :: Parser AExpr
 aExprP = do x <- termP
             charP '+'
@@ -133,4 +143,21 @@ baseP = (charP '(' *> (Base <$> aExprP) <* charP ')')
         <|> (BaseSingle <$> ExprI <$> imagP)
         <|> (BaseSingle <$> ExprF <$> floatP)
         <|> (BaseSingle <$> ExprM <$> matrixP)
+        <|> (BaseSingle <$> ExprFE <$> funcExprP)
+        <|> (BaseSingle <$> ExprV <$> varP)
+
+funcDeclP :: Parser FuncDecl
+funcDeclP = do name <- varP
+               charP '('
+               argName <- varP
+               charP ')'
+               return (FuncDecl name argName)
+
+labelP :: Parser Label
+labelP = varP <|> funcDeclP
+
+evalP :: Parser Eval
+evalP = do labelP
+           charP '='
+           (EvalDecl <$> exprP) <|> (EvalTry <$ charP '?')
 
