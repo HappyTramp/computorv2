@@ -1,11 +1,8 @@
-module Parser where
+module Parser.Core where
 
 import Control.Applicative
 import Control.Monad
 import Data.Char
-
-import Atom
-import Expr
 
 newtype Parser a = Parser { parse :: String -> Maybe (a, String) }
 
@@ -62,15 +59,14 @@ chainl :: Parser a -> Parser (a -> a -> a) -> a -> Parser a
 chainl p op a = chainl1 p op <|> pure a
 
 chainl1 :: Parser a -> Parser (a -> a -> a) -> Parser a
-chainl1 p op = do first <- p
-                  rest first
+chainl1 p op = p >>= rest
     where rest prev = do f <- op
                          e <- p
                          rest (f prev e)
                       <|> return prev
 
 signed :: Num a => Parser a -> Parser a
-signed p = do charP '-'
+signed p = do char '-'
               x <- p
               return (-x)
            <|> p
@@ -79,19 +75,22 @@ readParser :: Read a => Parser String -> Parser a
 readParser p = read <$> p
 
 infixOp :: String -> (a -> a -> a) -> Parser (a -> a -> a)
-infixOp opStr f = stringP opStr *> pure f
+infixOp opStr f = string opStr *> pure f
 
 parenthesize :: Parser a -> Parser a
-parenthesize p = charP '(' *> p <* charP ')'
+parenthesize p = char '(' *> p <* char ')'
 
-charP :: Char -> Parser Char
-charP c = satisfyChar (c ==)
+char :: Char -> Parser Char
+char c = satisfyChar (c ==)
 
-stringP :: String -> Parser String
-stringP s = sequenceA $ charP <$> s
+string :: String -> Parser String
+string s = sequenceA $ char <$> s
 
 alphaP :: Parser Char
 alphaP = satisfyChar isAlpha
+
+alphaStringP :: Parser String
+alphaStringP = some alphaP
 
 digitsP :: Parser String
 digitsP = some (satisfyChar isDigit) -- at least one digit to avoid read exception
@@ -108,41 +107,10 @@ intP = signed unsignedIntP
 unsignedFloatP :: Parser Float
 unsignedFloatP = readParser p
     where p = do pos <- digitsP
-                 charP '.'
+                 char '.'
                  dec <- digitsP
                  return (pos ++ "." ++ dec)
               <|> digitsP
 
 floatP :: Parser Float
 floatP = signed unsignedFloatP
-
-imaginaryP :: Parser Atom
-imaginaryP = AImaginary <$> (floatP <* charP 'i')
-
-rationalP :: Parser Atom
-rationalP = ARational <$> floatP
-
-termOpP :: Parser (Expr -> Expr -> Expr)
-termOpP = infixOp "+" Add <|> infixOp "-" Sub
-
-factorOpP :: Parser (Expr -> Expr -> Expr)
-factorOpP = infixOp "*" Mul <|> infixOp "/" Div <|> infixOp "%" Mod
-
-expOpP :: Parser (Expr -> Expr -> Expr)
-expOpP = infixOp "^" Exp
-
-exprP :: Parser Expr
-exprP = termP `chainl1` termOpP
-
-termP :: Parser Expr
-termP =  factorP `chainl1` factorOpP
-
-factorP :: Parser Expr
-factorP =  endpointP `chainl1` expOpP
-    where endpointP = parenthesisP <|> (EAtom <$> atomP)
-
-parenthesisP :: Parser Expr
-parenthesisP = parenthesize exprP
-
-atomP :: Parser Atom
-atomP = imaginaryP <|> rationalP
