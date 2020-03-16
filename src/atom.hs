@@ -30,6 +30,10 @@ _ /? (ARational 0) = Nothing
 (ARational a) /? (ARational b) = Just $ ARational (a / b)
 _ /? _ = Nothing
 
+infixl 7 %?
+(%?) :: Atom -> Atom -> Maybe Atom
+_ %? _ = Nothing
+
 infixr 8 ^?
 (^?) :: Atom -> Atom -> Maybe Atom
 (ARational a) ^? (ARational b) = Just $ ARational (a ** b)

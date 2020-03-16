@@ -4,15 +4,14 @@ import Control.Applicative
 import Control.Monad
 import Data.Char
 
+import Atom
 import Expr
-import Imag
-import Matrix
 
+newtype Parser a = Parser { parse :: String -> Maybe (a, String) }
 
-newtype Parser a = Parser (String -> Maybe (a, String))
-
-parse :: Parser a -> String -> Maybe (a, String)
-parse (Parser p) input = p input
+parseStrict :: Parser a -> String -> Maybe a
+parseStrict p input = case parse p input of Just (a, "") -> Just a
+                                            _            -> Nothing
 
 instance Functor Parser where
     -- fmap :: (a -> b) -> Parser a -> Parser b
@@ -54,11 +53,22 @@ satisfyChar f = Parser p
           p (c:cs) = if f c then Just (c, cs)
                             else Nothing
 
-sepBy :: Parser b -> Parser a -> Parser [a]
-sepBy sep x = (:) <$> x <*> (many (sep *> x))
+-- sepBy :: Parser b -> Parser a -> Parser [a]
+-- sepBy sep x = (:) <$> x <*> (many (sep *> x))
+-- sepByMap :: (b -> a -> a) -> Parser b -> Parser a -> Parser [a]
+-- sepByMap f sep x = (:) <$> x <*> (many (f <$> sep <*> x))
 
-sepByMap :: (b -> a -> a) -> Parser b -> Parser a -> Parser [a]
-sepByMap f sep x = (:) <$> x <*> (many (f <$> sep <*> x))
+chainl :: Parser a -> Parser (a -> a -> a) -> a -> Parser a
+chainl p op a = chainl1 p op <|> pure a
+
+chainl1 :: Parser a -> Parser (a -> a -> a) -> Parser a
+chainl1 p op = do first <- p
+                  rest first
+    where rest prev = do f <- op
+                         e <- p
+                         rest (f prev e)
+                      <|> return prev
+
 signed :: Num a => Parser a -> Parser a
 signed p = do charP '-'
               x <- p
@@ -68,8 +78,17 @@ signed p = do charP '-'
 readParser :: Read a => Parser String -> Parser a
 readParser p = read <$> p
 
+infixOp :: String -> (a -> a -> a) -> Parser (a -> a -> a)
+infixOp opStr f = stringP opStr *> pure f
+
+parenthesize :: Parser a -> Parser a
+parenthesize p = charP '(' *> p <* charP ')'
+
 charP :: Char -> Parser Char
 charP c = satisfyChar (c ==)
+
+stringP :: String -> Parser String
+stringP s = sequenceA $ charP <$> s
 
 alphaP :: Parser Char
 alphaP = satisfyChar isAlpha
@@ -97,67 +116,33 @@ unsignedFloatP = readParser p
 floatP :: Parser Float
 floatP = signed unsignedFloatP
 
-imagP :: Parser Imag
-imagP = Imag <$> (floatP <* charP 'i')
+imaginaryP :: Parser Atom
+imaginaryP = AImaginary <$> (floatP <* charP 'i')
 
-matrixP :: Parser (Matrix AExpr)
-matrixP = Matrix <$> (charP '[' *> (sepBy (charP ';') matrixRowP) <* charP ']')
+rationalP :: Parser Atom
+rationalP = ARational <$> floatP
 
-matrixRowP :: Parser (MatrixRow AExpr)
-matrixRowP = charP '[' *> (sepBy (charP ',') aExprP) <* charP ']'
+termOpP :: Parser (Expr -> Expr -> Expr)
+termOpP = infixOp "+" Add <|> infixOp "-" Sub
 
-varP :: Parser Var
-varP = some alphaP
+factorOpP :: Parser (Expr -> Expr -> Expr)
+factorOpP = infixOp "*" Mul <|> infixOp "/" Div <|> infixOp "%" Mod
 
-funcExprP :: Parser FuncExpr
-funcExprP = do name <- varP
-               charP '('
-               arg <- aExprP
-               charP ')'
-               return (FuncExpr name arg)
+expOpP :: Parser (Expr -> Expr -> Expr)
+expOpP = infixOp "^" Exp
 
-aExprP :: Parser AExpr
-aExprP = do x <- termP
-            charP '+'
-            y <- aExprP
-            return (AExpr x y)
-         <|> (AExprSingle <$> termP)
+exprP :: Parser Expr
+exprP = termP `chainl1` termOpP
 
-termP :: Parser Term
-termP = do f <- factorP
-           charP '*'
-           t <- termP
-           return (Term f t)
-        <|> (TermSingle <$> factorP)
+termP :: Parser Expr
+termP =  factorP `chainl1` factorOpP
 
+factorP :: Parser Expr
+factorP =  endpointP `chainl1` expOpP
+    where endpointP = parenthesisP <|> (EAtom <$> atomP)
 
-factorP :: Parser Factor
-factorP = do b <- baseP
-             charP '^'
-             e <- factorP
-             return (Factor b e)
-          <|> (FactorSingle <$> baseP)
+parenthesisP :: Parser Expr
+parenthesisP = parenthesize exprP
 
-baseP :: Parser Base
-baseP = (charP '(' *> (Base <$> aExprP) <* charP ')')
-        <|> (BaseSingle <$> ExprI <$> imagP)
-        <|> (BaseSingle <$> ExprF <$> floatP)
-        <|> (BaseSingle <$> ExprM <$> matrixP)
-        <|> (BaseSingle <$> ExprFE <$> funcExprP)
-        <|> (BaseSingle <$> ExprV <$> varP)
-
-funcDeclP :: Parser FuncDecl
-funcDeclP = do name <- varP
-               charP '('
-               argName <- varP
-               charP ')'
-               return (FuncDecl name argName)
-
-labelP :: Parser Label
-labelP = varP <|> funcDeclP
-
-evalP :: Parser Eval
-evalP = do labelP
-           charP '='
-           (EvalDecl <$> exprP) <|> (EvalTry <$ charP '?')
-
+atomP :: Parser Atom
+atomP = imaginaryP <|> rationalP
