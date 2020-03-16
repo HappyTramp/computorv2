@@ -50,8 +50,9 @@ satisfyChar f = Parser p
           p (c:cs) = if f c then Just (c, cs)
                             else Nothing
 
--- sepBy :: Parser b -> Parser a -> Parser [a]
--- sepBy sep x = (:) <$> x <*> (many (sep *> x))
+sepBy :: Parser b -> Parser a -> Parser [a]
+sepBy sep x = (:) <$> x <*> (many (sep *> x))
+
 -- sepByMap :: (b -> a -> a) -> Parser b -> Parser a -> Parser [a]
 -- sepByMap f sep x = (:) <$> x <*> (many (f <$> sep <*> x))
 

@@ -21,7 +21,7 @@ SRC = $(shell find $(SRC_DIR) -type f -name "*.hs")
 all: $(NAME)
 
 $(NAME): $(SRC)
-	$(CC) --make -outputdir $(BUILD_DIR) -o $(NAME) $(SRC)
+	$(CC) -dynamic --make -outputdir $(BUILD_DIR) -o $(NAME) $(SRC)
 
 clean:
 	$(RM) $(BUILD_DIR)/*.o $(BUILD_DIR)/*.hi
