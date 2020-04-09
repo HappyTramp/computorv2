@@ -6,13 +6,13 @@ import Parser.Core
 import Expr
 
 
-imaginaryP :: Parser Atom
+imaginaryP :: Parser Expr
 imaginaryP = Imaginary <$> (floatP <* char 'i')
 
-rationalP :: Parser Atom
+rationalP :: Parser Expr
 rationalP = Rational <$> floatP
 
-matrixP :: Parser Atom
+matrixP :: Parser Expr
 matrixP = Matrix <$> (char '[' *> sepBy (char ';') matrixRowP <* char ']')
     where matrixRowP = char '[' *> sepBy (char ',') exprP <* char ']'
 
@@ -27,16 +27,13 @@ termP =  factorP `chainl1` factorOpP
 factorP :: Parser Expr
 factorP =  endpointP `chainl1` expOpP
     where expOpP = infixOp "^" Exp
-          endpointP = parenthesisExprP <|> (EAtom <$> atomP) <|> functionP <|> variableP
 
-variableP :: Parser Expr
-variableP = Variable <$> alphaStringP
-
-functionP :: Parser Expr
-functionP = Function <$> alphaStringP <*> parenthesisExprP
-
-parenthesisExprP :: Parser Expr
-parenthesisExprP = parenthesize exprP
-
-atomP :: Parser Atom
-atomP = imaginaryP <|> rationalP <|> matrixP
+          endpointP = parensExprP
+                      <|> imaginaryP
+                      <|> rationalP
+                      <|> matrixP
+                      <|> functionP
+                      <|> variableP
+              where variableP = Variable <$> alphaStringP
+                    functionP = Function <$> alphaStringP <*> parensExprP
+                    parensExprP = parenthesize exprP

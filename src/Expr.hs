@@ -2,14 +2,11 @@ module Expr where
 
 import Data.List
 
-data Atom
+data Expr
     = Rational Float
     | Imaginary Float
+    | Complex Float Float
     | Matrix [[Expr]]
-    deriving (Eq)
-
-data Expr
-    = EAtom Atom
     | Add Expr Expr
     | Sub Expr Expr
     | Mul Expr Expr
@@ -21,8 +18,19 @@ data Expr
     | Function String Expr
     deriving (Eq)
 
+data Expr
+    = Atom
+    | BinOp
+    | Variable String
+    | Function String Expr
+
+
 instance Show Expr where
-    show (EAtom a) = show a
+    show (Rational r) = show r
+    show (Imaginary i) = show i ++ "i"
+    show (Complex a b) = show a ++ " + " ++ show b ++ "i"
+    show (Matrix m) = intercalate "\n" (map showRow m)
+        where showRow r = "[ " ++ intercalate ", " (map show r) ++ " ]"
     show (Add e1 e2) = show e1 ++ " + " ++ show e2
     show (Sub e1 e2) = show e1 ++ " - " ++ show e2
     show (Mul e1 e2) = show e1 ++ " * " ++ show e2
@@ -33,8 +41,3 @@ instance Show Expr where
     show (Variable name) = name
     show (Function name e) = name ++ "(" ++ show e ++ ")"
 
-instance Show Atom where
-    show (Rational r) = show r
-    show (Imaginary i) = show i ++ "i"
-    show (Matrix m) = intercalate "\n" (map showRow m)
-        where showRow r = "[ " ++ intercalate ", " (map show r) ++ " ]"
