@@ -1,6 +1,9 @@
 module Expr where
 
 import           Data.List
+import qualified Data.Map  as M
+import Control.Monad
+
 
 data Expr
     = Rational Float
@@ -35,6 +38,11 @@ instance Show Expr where
     show (Matrix rows)     = intercalate "\n" $ map showRow rows
         where showRow r = "[ " ++ (intercalate ", " $ map show r) ++ " ]"
 
+isLitteral :: Expr -> Bool
+isLitteral (Rational _)  = True
+isLitteral (Imaginary _) = True
+isLitteral (Complex _ _) = True
+isLitteral _             = False
 
 -------------------------------------------------------------------------------
 -- Operators
@@ -99,5 +107,53 @@ exp _ _ = Nothing
 
 
 dot :: Expr -> Expr -> Maybe Expr
-dot (Matrix a) (Matrix b) = undefined
+dot (Matrix a) (Matrix b)
+    | shape a == shape bT = Matrix <$> mapM (\ai -> mapM (dotProd ai) bT) a
+    | otherwise           = Nothing
+    where bT = transpose b
+          shape m = [length m, length (head m)]
+
+          dotProd :: [Expr] -> [Expr] -> Maybe Expr
+          dotProd r c = foldM add (Rational 0) =<< zipWithM mul r c
+
 dot _ _                   = Nothing
+
+
+-------------------------------------------------------------------------------
+-- Evaluation
+-------------------------------------------------------------------------------
+
+type LabelMap a = M.Map String a
+data Context = Context { variables :: LabelMap Expr
+                       , functions :: LabelMap (String, Expr)
+                       }
+
+eval :: Expr -> Context -> Maybe Expr
+
+eval (Add e1 e2) c = evalInfix e1 e2 add c
+eval (Sub e1 e2) c = evalInfix e1 e2 sub c
+eval (Mul e1 e2) c = evalInfix e1 e2 mul c
+eval (Div e1 e2) c = evalInfix e1 e2 Expr.div c
+eval (Mod e1 e2) c = evalInfix e1 e2 Expr.mod c
+eval (Exp e1 e2) c = evalInfix e1 e2 Expr.exp c
+eval (Dot e1 e2) c = evalInfix e1 e2 dot c
+
+eval (Variable name) c = name `M.lookup` (variables c) >>= (\e -> eval e c)
+
+eval (Function name e) (Context vars funcs) =
+    do arg <- eval e (Context vars funcs)
+       (argName, functionExpr) <- name `M.lookup` funcs
+       let localVars = M.insert argName arg vars
+       eval functionExpr (Context localVars funcs)
+
+eval (Matrix m) c = Matrix <$> mapM (mapM (\e -> eval e c)) m
+
+eval x _
+    | isLitteral x = Just x
+    | otherwise    = Nothing
+
+
+evalInfix :: Expr -> Expr -> (Expr -> Expr -> Maybe Expr) -> Context -> Maybe Expr
+evalInfix e1 e2 f c = do a <- eval e1 c
+                         b <- eval e2 c
+                         f a b

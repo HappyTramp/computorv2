@@ -3,8 +3,8 @@
 module Parser.Core where
 
 import           Control.Applicative
-import           Control.Monad
 import           Data.Char
+
 
 newtype Parser a = Parser { runParser :: String -> Either String (a, String) }
 
@@ -76,12 +76,6 @@ string s = sequenceA $ char <$> s
 sepBy :: Parser a -> Parser b -> Parser [a]
 sepBy x sepatator = (:) <$> x <*> (many (sepatator *> x))
 
--- sepByMap :: (b -> a -> a) -> Parser b -> Parser a -> Parser [a]
--- sepByMap f sep x = (:) <$> x <*> (many (f <$> sep <*> x))
-
--- chainl :: Parser a -> Parser (a -> a -> a) -> a -> Parser a
--- chainl p op a = chainl1 p op <|> pure a
-
 -- Parse one or more occurences of p separated by op
 -- Apply op in a left associative maner on each value in p
 chainl1 :: Parser a -> Parser (a -> a -> a) -> Parser a
@@ -106,8 +100,13 @@ choice :: [Parser a] -> Parser a
 choice []     = empty
 choice (p:ps) = p <|> choice ps
 
-alphaStringP :: Parser String
-alphaStringP = some (satisfyChar isAlpha)
+-- verify :: (a -> Bool) -> Parser a -> Parser a
+-- verify predicate p = do a <- p
+--                         if predicate a then p else Parser (\_ -> Left "Bonjour")
+
+-- Parse a string of alpha character, converted to lower case
+labelP :: Parser String
+labelP = (map toLower) <$> some (satisfyChar isAlpha)
 
 
 floatP :: Parser Float
@@ -116,7 +115,7 @@ floatP = signed unsignedP
         unsignedP :: Parser Float
         unsignedP = read <$> p
             where p = do pos <- digitsP
-                         char '.'
+                         _ <- char '.'
                          dec <- digitsP
                          return (pos ++ "." ++ dec)
                       <|> digitsP
@@ -124,7 +123,7 @@ floatP = signed unsignedP
                   digitsP = some $ satisfyChar isDigit -- at least one digit to avoid read exception
 
         signed :: Num a => Parser a -> Parser a
-        signed p = do char '-'
+        signed p = do _ <- char '-'
                       x <- p
                       return (-x)
                      <|> p

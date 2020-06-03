@@ -60,3 +60,17 @@ Uses eager evaluation, variable value is known after assignment, function value 
 > f(x) = 2 * 3 * 4 * x
 24 * x
 ```
+
+## TODO
+
+- [ ] Reduce functions expression
+- [ ] `i` is not a valid label name
+- [ ] Check if matrix are rectangular
+- [ ] Polynomial detection and resolution
+- [ ] More operators
+
+- Bonus
+    - [ ] Better error message
+    - [ ] Builtin functions (sin, cos, ...)
+    - [ ] Add realline library
+    - [ ] Command to print environment

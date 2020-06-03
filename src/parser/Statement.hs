@@ -9,19 +9,22 @@ import           Parser.Expr
 
 data Statement
     = Evaluation Expr
+    | PolynomEvaluation Expr Expr
     | VariableDeclaration String Expr
     | FunctionDeclaration String String Expr
 
 statementP :: Parser Statement
-statementP = functionDeclarationP <|> variableDeclarationP <|> evaluationP
+statementP = functionDeclarationP <|> variableDeclarationP <|> polynomEvaluationP <|> evaluationP
     where
         functionDeclarationP = FunctionDeclaration
-                                    <$> alphaStringP
-                                    <*> parenthesis alphaStringP
+                                    <$> labelP
+                                    <*> parenthesis labelP
                                     <*> (char '=' *> exprP)
 
         variableDeclarationP = VariableDeclaration
-                                    <$> alphaStringP
+                                    <$> labelP
                                     <*> (char '=' *> exprP)
+
+        polynomEvaluationP   = PolynomEvaluation <$>  exprP <*> (char '=' *> exprP <* char '?')
 
         evaluationP          = Evaluation <$> exprP <* char '=' <* char '?'

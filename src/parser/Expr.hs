@@ -1,23 +1,9 @@
-module Parser.Expr where
+module Parser.Expr (exprP) where
 
 import Control.Applicative
 
 import Parser.Core
 import Expr
-
-
-imaginaryP :: Parser Expr
-imaginaryP = Imaginary <$> (floatP <* char 'i')
-
-rationalP :: Parser Expr
-rationalP = Rational <$> floatP
-
--- Parse a matrix in the following format:
--- [ [a, b]; [c, d] ]
-matrixP :: Parser Expr
-matrixP = Matrix <$> brackets (matrixRowP `sepBy` (char ';'))
-    where matrixRowP = brackets (exprP `sepBy` (char ','))
-          brackets = between "[" "]"
 
 
 -- Parse expression separated by one infix operator of the operator list
@@ -42,12 +28,19 @@ termP =  operatorChoiceChain factorP
 factorP :: Parser Expr
 factorP =  choice [ parenthesizedExprP
                   , imaginaryP
-                  , rationalP
+                  , Rational <$> floatP
                   , matrixP
-                  , functionP
-                  , variableP
+                  , Function <$> labelP <*> parenthesizedExprP
+                  , Variable <$> labelP
                   ] `chainl1` (infixOp "^" Exp)
+    where
+        parenthesizedExprP = parenthesis exprP
 
-    where variableP = Variable <$> alphaStringP
-          functionP = Function <$> alphaStringP <*> parenthesizedExprP
-          parenthesizedExprP = parenthesis exprP
+        imaginaryP = Imaginary <$> (floatP <|> pure 1.0) <* char 'i'
+
+        -- Parse a matrix in the following format:
+        -- [ [a, b]; [c, d] ]
+        matrixP :: Parser Expr
+        matrixP = Matrix <$> brackets (matrixRowP `sepBy` (char ';'))
+            where matrixRowP = brackets (exprP `sepBy` (char ','))
+                  brackets = between "[" "]"
