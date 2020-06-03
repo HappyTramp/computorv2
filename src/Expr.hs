@@ -1,6 +1,6 @@
 module Expr where
 
-import Data.List
+import           Data.List
 
 data Expr
     = Rational Float
@@ -19,81 +19,85 @@ data Expr
     deriving (Eq)
 
 instance Show Expr where
-    show (Add e1 e2) = show e1 ++ " + " ++ show e2
-    show (Sub e1 e2) = show e1 ++ " - " ++ show e2
-    show (Mul e1 e2) = show e1 ++ " * " ++ show e2
-    show (Div e1 e2) = show e1 ++ " / " ++ show e2
-    show (Mod e1 e2) = show e1 ++ " % " ++ show e2
-    show (Exp e1 e2) = show e1 ++ " ^ " ++ show e2
-    show (Dot e1 e2) = show e1 ++ " ** " ++ show e2
-    show (Variable name) = name
+    show (Rational a)      = show a
+    show (Imaginary b)     = show b ++ "i"
+    show (Complex a b)     = show a ++ " + " ++ show (Imaginary b)
+    show (Add e1 e2)       = show e1 ++ " + " ++ show e2
+    show (Sub e1 e2)       = show e1 ++ " - " ++ show e2
+    show (Mul e1 e2)       = show e1 ++ " * " ++ show e2
+    show (Div e1 e2)       = show e1 ++ " / " ++ show e2
+    show (Mod e1 e2)       = show e1 ++ " % " ++ show e2
+    show (Exp e1 e2)       = show e1 ++ " ^ " ++ show e2
+    show (Dot e1 e2)       = show e1 ++ " ** " ++ show e2
+    show (Variable name)   = name
     show (Function name e) = name ++ "(" ++ show e ++ ")"
+
+    show (Matrix rows)     = intercalate "\n" $ map showRow rows
+        where showRow r = "[ " ++ (intercalate ", " $ map show r) ++ " ]"
 
 
 -------------------------------------------------------------------------------
 -- Operators
 -------------------------------------------------------------------------------
 
-builtinAdd :: Expr -> Expr -> Maybe Expr
+add :: Expr -> Expr -> Maybe Expr
 
-builtinAdd (Rational a)    (Rational b)    = Just $ Rational (a + b)
-builtinAdd (Rational a)    (Imaginary b)   = Just $ Complex a b
-builtinAdd (Rational a)    (Complex br bi) = Just $ Complex (br + a) bi
+add (Rational a)    (Rational b)    = Just $ Rational (a + b)
+add (Rational a)    (Imaginary b)   = Just $ Complex a b
+add (Rational a)    (Complex br bi) = Just $ Complex (br + a) bi
 
-builtinAdd (Imaginary a)   (Imaginary b)   = Just $ Imaginary (a + b)
-builtinAdd (Imaginary a)   (Rational b)    = Just $ Complex b a
-builtinAdd (Imaginary a)   (Complex br bi) = Just $ Complex br (a + bi)
+add (Imaginary a)   (Imaginary b)   = Just $ Imaginary (a + b)
+add (Imaginary a)   (Rational b)    = Just $ Complex b a
+add (Imaginary a)   (Complex br bi) = Just $ Complex br (a + bi)
 
-builtinAdd (Complex ar ai) (Complex br bi) = Just $ Complex (ar + br) (ai + bi)
-builtinAdd (Complex ar ai) (Rational b)    = Just $ Complex (ar + b) ai
-builtinAdd (Complex ar ai) (Imaginary b)   = Just $ Complex ar (ai + b)
+add (Complex ar ai) (Complex br bi) = Just $ Complex (ar + br) (ai + bi)
+add (Complex ar ai) (Rational b)    = Just $ Complex (ar + b) ai
+add (Complex ar ai) (Imaginary b)   = Just $ Complex ar (ai + b)
 
-builtinAdd _ _ = Nothing
-
-
-builtinSub :: Expr -> Expr -> Maybe Expr
-builtinSub a b = builtinAdd a =<< (Rational (-1) `builtinMul` b)
+add _ _                             = Nothing
 
 
--- could be derived from addition
-builtinMul :: Expr -> Expr -> Maybe Expr
-builtinMul (Rational a) (Rational b)    = Just $ Rational (a * b)
-builtinMul (Rational a) (Imaginary b)   = Just $ Imaginary (a * b)
-builtinMul (Rational a) (Complex br bi) = Just $ Complex (a * br) (a * bi)
-
-builtinMul (Imaginary a) (Imaginary b)   = Just $ Imaginary (a * b)
-builtinMul (Imaginary a) (Rational b)    = Just $ Complex b a
-builtinMul (Imaginary a) (Complex br bi) = Just $ Complex (a * br) (a * bi)
-
-builtinMul _ _ = Nothing
+sub :: Expr -> Expr -> Maybe Expr
+sub a b = add a =<< Rational (-1) `mul` b
 
 
-builtinDiv :: Expr -> Expr -> Maybe Expr
-builtinDiv _ (Rational 0)  = Nothing
-builtinDiv _ (Imaginary 0) = Nothing
-builtinDiv _ (Complex 0 0) = Nothing
-builtinDiv a b = builtinMul a =<< (b `builtinExp` Rational (-1))
+mul :: Expr -> Expr -> Maybe Expr
+mul (Rational a) (Rational b)     = Just $ Rational (a * b)
+mul (Rational a) (Imaginary b)    = Just $ Imaginary (a * b)
+mul (Rational a) (Complex br bi)  = Just $ Complex (a * br) (a * bi)
+
+mul (Imaginary a) (Imaginary b)   = Just $ Imaginary (a * b)
+mul (Imaginary a) (Rational b)    = Just $ Complex b a
+mul (Imaginary a) (Complex br bi) = Just $ Complex (a * br) (a * bi)
+
+mul _ _                           = Nothing
 
 
-builtinMod :: Expr -> Expr -> Maybe Expr
-builtinMod _ _ = Nothing
+div :: Expr -> Expr -> Maybe Expr
+div _ (Rational 0)  = Nothing
+div _ (Imaginary 0) = Nothing
+div _ (Complex 0 0) = Nothing
+div a b             = mul a =<< b `Expr.exp` Rational (-1)
 
 
--- could be derived from multiplication
-builtinExp :: Expr -> Expr -> Maybe Expr
-builtinExp (Rational a)  (Rational b) = Just $ Rational (a ** b)
+mod :: Expr -> Expr -> Maybe Expr
+mod _ _ = Nothing
 
-builtinExp (Imaginary a) (Rational b)
-  | b < 0     =  builtinDiv (Rational 1) =<< ((Imaginary a) `builtinExp` (Rational b))
+
+exp :: Expr -> Expr -> Maybe Expr
+exp (Rational a)  (Rational b) = Just $ Rational (a ** b)
+
+exp (Imaginary a) (Rational b)
+  | b < 0     = Expr.div (Rational 1) =<< Imaginary a `Expr.exp` Rational b
   | b == 0    = Just $ Rational a
   | b == 1    = Just $ Imaginary a
   | b == 2    = Just $ Rational (-a)
   | b == 3    = Just $ Imaginary (-a)
-  | otherwise = Imaginary a `builtinExp` (Rational (b - 4))
+  | otherwise = Imaginary a `Expr.exp` Rational (b - 4)
 
-builtinExp _ _ = Nothing
+exp _ _ = Nothing
 
 
-builtinDot :: Expr -> Expr -> Maybe Expr
-builtinDot (Matrix a) (Matrix b) = undefined
-builtinDot _ _ = Nothing
+dot :: Expr -> Expr -> Maybe Expr
+dot (Matrix a) (Matrix b) = undefined
+dot _ _                   = Nothing

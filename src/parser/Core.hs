@@ -14,7 +14,6 @@ runParserStrict p input = case runParser p input of
     Right (_, rest) -> Left $ "Unconsumed input: \"" ++ rest ++ "\""
     Left err        -> Left err
 
-
 -------------------------------------------------------------------------------
 -- Parser instances
 -------------------------------------------------------------------------------
@@ -66,7 +65,7 @@ satisfyChar :: (Char -> Bool) -> Parser Char
 satisfyChar predicate = Parser p
     where p []     = Left "Expected input"
           p (c:cs) = if predicate c then Right (c, cs)
-                                    else Left "Expected char"
+                                    else Left $ "Unexpected char '" ++ [c] ++ "'"
 
 char :: Char -> Parser Char
 char c = satisfyChar (c ==)

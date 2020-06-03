@@ -1,39 +1,52 @@
-import System.IO
-import Parser.Core
-import Expr
+import           Data.Char
+import qualified Data.Map         as M
+import           System.IO
+
+import           Evaluation       as E
+import           Expr
+import           Parser.Core
+import           Parser.Expr
+import           Parser.Statement
 
 
-main = return ()
+main :: IO ()
+main = promptLoop (Context M.empty M.empty)
 
--- main = promptLoop []
---
--- promptLoop :: Context -> IO ()
--- promptLoop context = do
---     line <- prompt
---     if line /= "exit"
---        then loop line context >>= promptLoop
---        else return ()
---
--- loop :: String -> Context -> IO Context
--- loop line context = do s <- parseIO line
---                        context <- printStatement s context
---                        putStrLn $ show context
---                        return context
---
--- prompt :: IO String
--- prompt = do putStr "> "
---             hFlush stdout
---             getLine
---
--- parseIO :: String -> IO Statement
--- parseIO input = case parseStrict statementP input of
---                   Nothing -> fail "Couldn't parse input"
---                   Just s  -> return s
---
--- printStatement :: Statement -> Context -> IO Context
--- printStatement (SAssignment a) context = do putStrLn $ show a
---                                             return $ update context a
--- printStatement (SExpr e) context = do putStrLn evalStr
---                                       return context
---     where evalStr = case eval context e of Nothing -> "Couldn't evaluate expression"
---                                            Just a  -> show a
+promptLoop :: Context -> IO ()
+promptLoop context = do
+    putStr "> "
+    hFlush stdout
+    line <- getLine
+    return ()
+    if line /= "q"
+       then loop line context >>= promptLoop
+       else return ()
+
+loop :: String -> Context -> IO Context
+loop input context =
+    do
+        statement <- case runParserStrict statementP (filter (not . isSpace) input) of
+                        Left err -> fail ("Error: " ++ err)
+                        Right s  -> return s
+        Main.eval context statement
+
+
+eval :: Context -> Statement -> IO Context
+
+eval c (Evaluation e) = do case E.eval c e of
+                             Just evaluated -> putStrLn $ show evaluated
+                             Nothing        -> putStrLn "Error: couldn't evaluate expression"
+                           return c
+
+eval (Context vars funcs) (VariableDeclaration name e) =
+    case E.eval context e of
+        Just evaluated -> return $ Context (M.insert name e vars) funcs
+        Nothing        -> putStrLn "Error: couldn't evaluate expression" >> return context
+    where context = Context vars funcs
+
+eval (Context vars funcs) (FunctionDeclaration name argName e) =
+    -- case E.eval context e of
+        -- Just evaluated -> return $ Context vars (M.insert name (argName, e) funcs)
+        -- Nothing        -> putStrLn "Error: couldn't evaluate expression" >> return context
+        return $ Context vars (M.insert name (argName, e) funcs)
+    -- where context = Context vars funcs
