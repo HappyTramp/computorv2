@@ -6,14 +6,15 @@
 #    By: cacharle <marvin@42.fr>                    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2020/02/29 11:54:31 by cacharle          #+#    #+#              #
-#    Updated: 2020/02/29 12:01:42 by cacharle         ###   ########.fr        #
+#    Updated: 2020/06/03 12:01:15 by charles          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 CC = ghc
+RM = rm -f
 
 SRC_DIR = src
-BUILD_DIR = build
+OBJ_DIR = build
 NAME = computorv2
 
 SRC = $(shell find $(SRC_DIR) -type f -name "*.hs")
@@ -21,10 +22,10 @@ SRC = $(shell find $(SRC_DIR) -type f -name "*.hs")
 all: $(NAME)
 
 $(NAME): $(SRC)
-	$(CC) -dynamic --make -outputdir $(BUILD_DIR) -o $(NAME) $(SRC)
+	$(CC) -dynamic --make -outputdir $(OBJ_DIR) -o $(NAME) $(SRC)
 
 clean:
-	$(RM) $(BUILD_DIR)/*.o $(BUILD_DIR)/*.hi
+	$(RM) -r $(OBJ_DIR)
 
 fclean: clean
 	$(RM) $(NAME)
