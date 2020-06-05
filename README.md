@@ -64,8 +64,8 @@ Uses eager evaluation, variable value is known after assignment, function value 
 ## TODO
 
 - [ ] Reduce functions expression
-- [ ] `i` is not a valid label name
-- [ ] Check if matrix are rectangular
+- [x] `i` is not a valid label name
+- [x] Check if matrix are rectangular
 - [ ] Polynomial detection and resolution
 - [ ] More operators
 

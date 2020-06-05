@@ -100,13 +100,16 @@ choice :: [Parser a] -> Parser a
 choice []     = empty
 choice (p:ps) = p <|> choice ps
 
--- verify :: (a -> Bool) -> Parser a -> Parser a
--- verify predicate p = do a <- p
---                         if predicate a then p else Parser (\_ -> Left "Bonjour")
+verify :: (a -> Bool) -> a -> Parser a
+verify predicate x = if predicate x then pure x else empty
 
--- Parse a string of alpha character, converted to lower case
-labelP :: Parser String
-labelP = (map toLower) <$> some (satisfyChar isAlpha)
+-- Parse a string of alpha character
+-- Convert to lower case and check that the label isn't `i`
+varLabelP :: Parser String
+varLabelP = (map toLower <$> some (satisfyChar isAlpha)) >>= verify (/= "i")
+
+funLabelP :: Parser String
+funLabelP = map toLower <$> some (satisfyChar isAlpha)
 
 
 floatP :: Parser Float

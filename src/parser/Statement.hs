@@ -14,15 +14,15 @@ data Statement
     | FunctionDeclaration String String Expr
 
 statementP :: Parser Statement
-statementP = functionDeclarationP <|> variableDeclarationP <|> polynomEvaluationP <|> evaluationP
+statementP = functionDeclarationP <|> variableDeclarationP <|> evaluationP <|> polynomEvaluationP
     where
         functionDeclarationP = FunctionDeclaration
-                                    <$> labelP
-                                    <*> parenthesis labelP
+                                    <$> funLabelP
+                                    <*> parenthesis varLabelP
                                     <*> (char '=' *> exprP)
 
         variableDeclarationP = VariableDeclaration
-                                    <$> labelP
+                                    <$> varLabelP
                                     <*> (char '=' *> exprP)
 
         polynomEvaluationP   = PolynomEvaluation <$>  exprP <*> (char '=' *> exprP <* char '?')

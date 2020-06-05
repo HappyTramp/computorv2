@@ -27,20 +27,23 @@ termP =  operatorChoiceChain factorP
 
 factorP :: Parser Expr
 factorP =  choice [ parenthesizedExprP
-                  , imaginaryP
                   , Rational <$> floatP
                   , matrixP
-                  , Function <$> labelP <*> parenthesizedExprP
-                  , Variable <$> labelP
+                  , Function <$> funLabelP <*> parenthesizedExprP
+                  , imaginaryP
+                  , Variable <$> varLabelP
                   ] `chainl1` (infixOp "^" Exp)
     where
         parenthesizedExprP = parenthesis exprP
 
-        imaginaryP = Imaginary <$> (floatP <|> pure 1.0) <* char 'i'
+        imaginaryP = (Complex 0) <$> (floatP <|> pure 1.0) <* char 'i'
 
         -- Parse a matrix in the following format:
         -- [ [a, b]; [c, d] ]
         matrixP :: Parser Expr
-        matrixP = Matrix <$> brackets (matrixRowP `sepBy` (char ';'))
+        matrixP = Matrix <$> (brackets (matrixRowP `sepBy` (char ';')) >>= verify check)
             where matrixRowP = brackets (exprP `sepBy` (char ','))
                   brackets = between "[" "]"
+                  check rows
+                    | length rows == 0 = False
+                    | otherwise        = all ((length (head rows) ==) . length) $ tail rows
