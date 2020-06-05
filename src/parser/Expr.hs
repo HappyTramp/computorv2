@@ -1,9 +1,9 @@
 module Parser.Expr (exprP) where
 
-import Control.Applicative
+import           Control.Applicative
 
-import Parser.Core
-import Expr
+import           Expr
+import           Parser.Core
 
 
 -- Parse expression separated by one infix operator of the operator list

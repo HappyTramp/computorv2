@@ -1,23 +1,25 @@
 module Expr where
 
+import           Control.Monad
 import           Data.List
-import qualified Data.Map  as M
-import Control.Monad
+import qualified Data.Map      as M
 
 
 data Expr
-    = Rational Float
+    = Rational Float  -- values
     | Imaginary Float
     | Complex Float Float
     | Matrix [[Expr]]
-    | Add Expr Expr
+
+    | Add Expr Expr --- ops
     | Sub Expr Expr
     | Mul Expr Expr
     | Div Expr Expr
     | Mod Expr Expr
     | Exp Expr Expr
     | Dot Expr Expr
-    | Variable String
+
+    | Variable String  -- lables
     | Function String Expr
     deriving (Eq)
 

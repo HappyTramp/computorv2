@@ -72,5 +72,5 @@ Uses eager evaluation, variable value is known after assignment, function value 
 - Bonus
     - [ ] Better error message
     - [ ] Builtin functions (sin, cos, ...)
-    - [ ] Add realline library
-    - [ ] Command to print environment
+    - [x] Add realline library
+    - [x] Command to print environment
