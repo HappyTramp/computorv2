@@ -6,12 +6,13 @@ import           Control.Applicative
 import           Data.Char
 
 
-newtype Parser a = Parser { runParser :: String -> Either String (a, String) }
+type Result a = Either String a
+newtype Parser a = Parser { runParser :: String -> Result (a, String) }
 
-runParserStrict :: Parser a -> String -> Either String a
+runParserStrict :: Parser a -> String -> Result a
 runParserStrict p input = case runParser p input of
     Right (a, "")   -> Right a
-    Right (_, rest) -> Left $ "Unconsumed input: \"" ++ rest ++ "\""
+    Right (_, rest) -> Left $ "Unexpected string: \"" ++ rest ++ "\""
     Left err        -> Left err
 
 -------------------------------------------------------------------------------
@@ -43,15 +44,15 @@ instance Monad Parser where
 
 -- instance for Either String so that it can be used in the Alternative for Parser
 instance Alternative (Either String) where
-    -- empty :: Either String a
+    -- empty :: Result a
     empty = Left ""
-    -- (<|>) :: Either String a -> Either String a -> Either String a
+    -- (<|>) :: Result a -> Result a -> Result a
     Left _ <|> x2 = x2
     x1     <|> _  = x1
 
 instance Alternative Parser where
     -- empty :: Parser a
-    empty = Parser (\_ -> Left "Empty")
+    empty = Parser (\_ -> empty)
     -- (<|>) :: Parser a -> Parser a -> Parser a
     (Parser p1) <|> (Parser p2) = Parser $ \s -> p1 s <|> p2 s
 
@@ -110,7 +111,6 @@ varLabelP = (map toLower <$> some (satisfyChar isAlpha)) >>= verify (/= "i")
 
 funLabelP :: Parser String
 funLabelP = map toLower <$> some (satisfyChar isAlpha)
-
 
 floatP :: Parser Float
 floatP = signed unsignedP

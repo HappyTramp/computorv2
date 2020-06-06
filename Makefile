@@ -6,14 +6,14 @@
 #    By: cacharle <marvin@42.fr>                    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2020/02/29 11:54:31 by cacharle          #+#    #+#              #
-#    Updated: 2020/06/03 17:27:55 by charles          ###   ########.fr        #
+#    Updated: 2020/06/05 16:30:53 by charles          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 GHC = ghc
 RM = rm -f
 
-GHCFLAGS = -dynamic --make -Wall
+GHCFLAGS = -dynamic --make -Wall -Wno-orphans
 
 SRC_DIR = src
 OBJ_DIR = build

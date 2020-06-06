@@ -26,31 +26,23 @@ promptLoop context = do
 
 eval :: Statement -> Context -> InputT IO Context
 
-eval (Evaluation e) c = do case E.eval e c of
-                             Just evaluated -> outputStrLn $ show evaluated
-                             Nothing        -> outputStrLn "Error: couldn't evaluate expression"
-                           return c
+eval (Evaluation e) c = evalOutput (E.eval e c) c (id . const)
 
-eval (VariableDeclaration name value) (Context vars funcs) =
-    case E.eval value context of
-        Just e  -> do outputStrLn $ show e
-                      return $ Context (M.insert name e vars) funcs
-        Nothing -> outputStrLn "Error: couldn't evaluate expression" >> return context
-    where context = Context vars funcs
+eval (VariableDeclaration name value) c = evalOutput (E.eval value c) c nextContext
+    where nextContext (Context vs fs) e = Context (M.insert name e vs) fs
 
-eval (FunctionDeclaration name argName e) (Context vars funcs) =
-    -- case evalIgnore e context argName of
-    --     Just e  -> do outputStrLn $ show e
-    --                   return $ Context vars (M.insert name (argName, e) funcs)
-    --     Nothing -> outputStrLn "Error: couldn't evaluate expression" >> return context
-    --
-    -- where context = Context vars funcs
-    return $ Context vars (M.insert name (argName, e) funcs)
+eval (FunctionDeclaration name argName value) c = evalOutput (evalIgnored value c argName) c nextContext
+    where nextContext (Context vs fs) e = Context vs (M.insert name (argName, e) fs)
 
 eval _ c = return c
 -- eval (PolynomEvaluation left right) c = do l <- eval left  -- count number of unknoewn
 --                                            r <- eval right
 
+
+evalOutput :: Maybe Expr -> Context -> (Context -> Expr -> Context) -> InputT IO Context
+evalOutput (Just evaluated) c f = do outputStrLn $ show evaluated
+                                     return $ f c evaluated
+evalOutput Nothing c _ = outputStrLn "Error: couldn't evaluate expression" >> return c
 
 
 putEnv :: Context -> InputT IO Context
